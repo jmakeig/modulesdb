@@ -5,7 +5,7 @@ from requests.auth import HTTPDigestAuth
 
 def put_file(uri, body, host="localhost", port=9556, protocol="http"):
     user = "admin"
-    passw = "admin"
+    passw = "admin" # Duh! That's obviously a bad idea.
     # uri = "/test.xqy"
     params = {"uri": "/" + uri, "perm:app-user": "execute"}
     headers = {}
