@@ -1,3 +1,5 @@
+# -*- coding: utf-8 -*-
+
 """
 Monitors our code & docs for changes
 """
@@ -58,7 +60,8 @@ class ChangeHandler(FileSystemEventHandler):
         else: 
             # getext(event.src_path) == '.py':
             print "Changed " + os.path.relpath(event.src_path, BASEDIR)
-            put_file(body="'" + os.path.relpath(event.src_path, BASEDIR) + "'")
+            f = open(event.src_path, "r")
+            put_file(uri=os.path.relpath(event.src_path, BASEDIR), body=f.read())
         
 def main():
     """
