@@ -22,43 +22,26 @@ import sys
 import subprocess
 import datetime
 import time
+import argparse
 
 from restput import put_file
-
 from watchdog.observers import Observer
 # from watchdog.observers.kqueue import KqueueObserver as Observer
 from watchdog.events import FileSystemEventHandler
 
-#BASEDIR = os.path.abspath(os.path.dirname(__file__))
+
+# Parse the command line arguments
+parser = argparse.ArgumentParser()
+parser.add_argument("url", help="The REST API endpoint fronting the modules database, of the form protocol://host:port, where protocol is http or https")
+parser.add_argument("dir", nargs='?', help="The directory to watch", default=os.getcwd())
+args = parser.parse_args()
+
 
 # Start the script in a directory you want to observe
-BASEDIR = os.getcwd()
+BASEDIR = os.path.abspath(args.dir)
+URL = args.url
+
 print BASEDIR
-
-def get_now():
-    "Get the current date and time as a string"
-    return datetime.datetime.now().strftime("%Y/%m/%d %H:%M:%S")
-
-def build_docs():
-    """
-    Run the Sphinx build (`make html`) to make sure we have the
-    latest version of the docs
-    """
-
-    print >> sys.stderr, "Building docs at %s" % get_now()
-    os.chdir(os.path.join(BASEDIR, "docs"))
-    subprocess.call(r'make.bat html')
-
-def run_tests():
-    "Run unit tests with unittest."
-
-    print >> sys.stderr, "Running unit tests at %s" % get_now()
-    os.chdir(BASEDIR)
-    subprocess.call(r'python -m unittest discover -b')
-
-def getext(filename):
-    "Get the file extension."
-    return os.path.splitext(filename)[-1].lower()
 
 class ChangeHandler(FileSystemEventHandler):
     """
@@ -75,7 +58,7 @@ class ChangeHandler(FileSystemEventHandler):
             # getext(event.src_path) == '.py':
             print "Changed " + os.path.relpath(event.src_path, BASEDIR)
             f = open(event.src_path, "r")
-            put_file(uri=os.path.relpath(event.src_path, BASEDIR), body=f.read())
+            put_file(uri=os.path.relpath(event.src_path, BASEDIR), body=f.read(), service_url=URL)
         
 def main():
     """

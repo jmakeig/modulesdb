@@ -17,7 +17,7 @@
 import requests
 from requests.auth import HTTPDigestAuth
 
-def put_file(uri, body, host="localhost", port=9556, protocol="http"):
+def put_file(uri, body, service_url):
     user = "admin"
     passw = "admin" # Duh! That's obviously a bad idea.
     # uri = "/test.xqy"
@@ -26,7 +26,7 @@ def put_file(uri, body, host="localhost", port=9556, protocol="http"):
     # headers = {'content-type': 'application/xquery'}
     # body = "'Hello, from Python requests!'"
     r = requests.put(
-        protocol + "://" + host + ":" + str(port) + "/v1/documents", 
+        service_url + "/v1/documents", 
         params=params, 
         headers=headers, 
         auth=HTTPDigestAuth(user, passw),
