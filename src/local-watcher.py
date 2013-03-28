@@ -34,8 +34,13 @@ def walk(top):
     for root, dirs, files in os.walk(top):
         for name in files:
             # print os.path.join(root, name)
-            print put_file_contents(os.path.join(root, name))
+            print format_put_message(put_file_contents(os.path.join(root, name)))
 
+def format_put_message(msg):
+    verb = "Updated"
+    if 201 == msg[0]:
+        verb = "Added"
+    return "  " + verb + " " + msg[1]
 
 def put_file_contents(path):
     "Sends the contents of the file at the input path to the globally configured REST URL"
@@ -58,7 +63,7 @@ class ChangeHandler(FileSystemEventHandler):
             # print "Changed " + os.path.relpath(event.src_path, BASEDIR)
             # f = open(event.src_path, "r")
             # put_file(uri=os.path.relpath(event.src_path, BASEDIR), body=f.read(), service_url=URL)
-            print put_file_contents(event.src_path)
+            print format_put_message(put_file_contents(event.src_path))
         
 def observe(recursive=True):
     "Observe folder and file changes. Only supports"
@@ -89,10 +94,9 @@ if __name__ == '__main__':
     BASEDIR = os.path.abspath(args.dir)
     URL = args.url
 
-    print BASEDIR
-
     if args.walk:
-        print "Walking…"
+        print "Walking " + BASEDIR
         walk(BASEDIR)
 
+    print "Observing " + BASEDIR
     observe()
