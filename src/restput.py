@@ -32,4 +32,17 @@ def put_file(uri, body, service_url):
         auth=HTTPDigestAuth(user, passw),
         data=body
     )
-    return (r.status_code, uri)
+    return ("PUT", r.status_code, uri)
+
+def delete_file(uri, service_url):
+    user = "admin"
+    passw = "admin" # Duh! That's obviously a bad idea.
+    params = {"uri": "/" + uri}
+    headers = {}
+    r = requests.delete(
+        service_url + "/v1/documents", 
+        params=params, 
+        headers=headers, 
+        auth=HTTPDigestAuth(user, passw)
+    )
+    return ("DELETE", r.status_code, uri)

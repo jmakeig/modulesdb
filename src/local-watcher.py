@@ -25,7 +25,7 @@ import datetime
 import time
 import argparse
 
-from restput import put_file
+from restput import put_file, delete_file
 from watchdog.observers import Observer
 from watchdog.events import FileSystemEventHandler
 
@@ -37,10 +37,12 @@ def walk(top):
             print format_put_message(put_file_contents(os.path.join(root, name)))
 
 def format_put_message(msg):
-    verb = "Updated"
-    if 201 == msg[0]:
-        verb = "Added"
-    return "  " + verb + " " + msg[1]
+    # msg is of the form (HTTP verb, URI of the affected doc, status code)
+    # 201 is added or
+    print msg
+    verb = "Stuffed"
+    # TODO
+    return "  " + verb + " " + msg[2]
 
 def put_file_contents(path):
     "Sends the contents of the file at the input path to the globally configured REST URL"
@@ -53,9 +55,8 @@ def put_file_contents(path):
 class ChangeHandler(FileSystemEventHandler):
     "Handle changes to files and directories."
 
-    def on_any_event(self, event):
-        "If any file or folder is changed"
-
+    def on_created(self, event):
+        # print "created event"
         if event.is_directory:
             return
         else: 
@@ -64,6 +65,37 @@ class ChangeHandler(FileSystemEventHandler):
             # f = open(event.src_path, "r")
             # put_file(uri=os.path.relpath(event.src_path, BASEDIR), body=f.read(), service_url=URL)
             print format_put_message(put_file_contents(event.src_path))
+
+    def on_modified(self, event):
+        # print "modified event"
+        if event.is_directory:
+            return
+        else: 
+            # getext(event.src_path) == '.py':
+            # print "Changed " + os.path.relpath(event.src_path, BASEDIR)
+            # f = open(event.src_path, "r")
+            # put_file(uri=os.path.relpath(event.src_path, BASEDIR), body=f.read(), service_url=URL)
+            print format_put_message(put_file_contents(event.src_path))
+
+    def on_deleted(self, event):
+        print "deleted event"
+        if event.is_directory:
+            return
+        else: 
+            # getext(event.src_path) == '.py':
+            # print "Changed " + os.path.relpath(event.src_path, BASEDIR)
+            # f = open(event.src_path, "r")
+            # put_file(uri=os.path.relpath(event.src_path, BASEDIR), body=f.read(), service_url=URL)
+            print format_put_message(delete_file(uri=os.path.relpath(event.src_path, BASEDIR), service_url=URL))
+
+    def on_moved(self, event):
+        print "moved event"
+
+    def on_any_event(self, event):
+        #print event
+        pass
+
+        
         
 def observe(recursive=True):
     "Observe folder and file changes. Only supports"
