@@ -32,4 +32,4 @@ def put_file(uri, body, service_url):
         auth=HTTPDigestAuth(user, passw),
         data=body
     )
-    print r.status_code
+    return (r.status_code, uri)
