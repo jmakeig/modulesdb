@@ -39,10 +39,13 @@ def walk(top):
 def format_put_message(msg):
     # msg is of the form (HTTP verb, URI of the affected doc, status code)
     # 201 is added or
-    print msg
-    verb = "Stuffed"
-    # TODO
-    return "  " + verb + " " + msg[2]
+    # print msg
+    verb = "* Updated"
+    if msg[0] == "DELETE": 
+        verb = "- Removed"
+    if msg[0] == "PUT" and msg[1] == 201:
+        verb = "+ Added"
+    return verb + " " + msg[2]
 
 def put_file_contents(path):
     "Sends the contents of the file at the input path to the globally configured REST URL"
@@ -54,6 +57,9 @@ def put_file_contents(path):
 
 class ChangeHandler(FileSystemEventHandler):
     "Handle changes to files and directories."
+
+    # TODO: Exclusion lists (e.g. .git, .DS_Store, Thumbs.db), similar to the way .gitignore works. 
+    # Call it .mlignore? Is there a Python class that already does this matching?
 
     def on_created(self, event):
         # print "created event"
@@ -78,7 +84,7 @@ class ChangeHandler(FileSystemEventHandler):
             print format_put_message(put_file_contents(event.src_path))
 
     def on_deleted(self, event):
-        print "deleted event"
+        # print "deleted event"
         if event.is_directory:
             return
         else: 
@@ -89,10 +95,13 @@ class ChangeHandler(FileSystemEventHandler):
             print format_put_message(delete_file(uri=os.path.relpath(event.src_path, BASEDIR), service_url=URL))
 
     def on_moved(self, event):
-        print "moved event"
+        # print "moved event"
+        # TODO: This needs to be wrapped in a transaction and give better feedback
+        delete_file(uri=os.path.relpath(event.src_path, BASEDIR), service_url=URL)
+        print format_put_message(put_file_contents(event.dest_path))
 
     def on_any_event(self, event):
-        #print event
+        print event
         pass
 
         
@@ -109,7 +118,7 @@ def observe(recursive=True):
     except KeyboardInterrupt: 
         observer.stop()
         # sys.exit(0)
-    # All of the examples call .join(). I don't see how this is ever exectued, though.
+    # All of the examples call .join(). I don't see how this is ever exectued, though, except right after the interrupt is handled. What does join do?
     observer.join()
 
 
