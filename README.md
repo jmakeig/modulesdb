@@ -4,7 +4,22 @@ Listen to changes in a local directory and automatically push them to a modules 
 
 ## Getting Started 
 
-TODO
+Run ```config/setup.sh``` to get the required dependencies using ```pip```. 
+
+From the command line in the directory you want to push to your remote modules database run
+
+```python ~/path/to/cloned/projects/modulesdb/src/local-watcher.py --walk http://localhost:9556```
+
+where ```9556``` is the port of the REST API instance fronting your target modules database.
+
+```--walk``` will recusively walk the directory structure an push everything prior to enabling the long-running directory watcher.
+
+The log should show messages whenever it receives a change event and pushes something. 
+
+Stop listening for changes using ```Ctl+c```.
+
+### Notes
+This assumes ```admin:admin``` credentials (D’oh! Don’t do anything important with this.) and a root of ```/``` in your modules database.
 
 ## License
 Copyright 2013 Justin Makeig <<https://github.com/jmakeig>>
