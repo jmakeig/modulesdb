@@ -25,6 +25,7 @@ import datetime
 import time
 import copy
 import argparse
+import getpass
 import json
 
 from restput import put_file, delete_file
@@ -172,7 +173,13 @@ if __name__ == '__main__':
         prefs = json.load(pref_file)
         print prefs
 
+    # Overlay command-line arguments on top of the preferences read from the dot file
     prefs.update(args)
+
+    # Ask for a password if it's not provided
+    # TODO: There are scenarios where this isn't needed.
+    if "password" not in prefs:
+        prefs['password'] = getpass.getpass()
 
     print prefs
 
