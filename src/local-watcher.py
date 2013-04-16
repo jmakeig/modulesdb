@@ -23,7 +23,9 @@ import sys
 import subprocess
 import datetime
 import time
+import copy
 import argparse
+import json
 
 from restput import put_file, delete_file
 from watchdog.observers import Observer
@@ -97,6 +99,9 @@ class ChangeHandler(FileSystemEventHandler):
     def on_moved(self, event):
         # print "moved event"
         # TODO: This needs to be wrapped in a transaction and give better feedback
+
+        #move_file(src_uri=os.path.relpath(event.src_path, BASEDIR), dest_uri=)
+
         delete_file(uri=os.path.relpath(event.src_path, BASEDIR), service_url=URL)
         print format_put_message(put_file_contents(event.dest_path))
 
@@ -121,7 +126,6 @@ def observe(recursive=True):
     # All of the examples call .join(). I don't see how this is ever exectued, though, except right after the interrupt is handled. What does join do?
     observer.join()
 
-
 if __name__ == '__main__':
     # TODO: Look for settings in a config file, override with command line
     #   * Directory to watch: Defaults to current working directory if not specified. Command line only.
@@ -134,21 +138,51 @@ if __name__ == '__main__':
 
     # What else needs to be done to support running this in the background and logging somewhere else? (Perhaps nothing)
     # What about when something fails? A local rm that results in a connection or auth error on the server will leave things in an inconsistent state, for example.
+
+
     # Parse the command line arguments
     parser = argparse.ArgumentParser()
-    parser.add_argument("url", help="The REST API endpoint fronting the modules database, of the form protocol://host:port, where protocol is http or https")
-    parser.add_argument('--walk', action='store_true', default=False)
+    parser.add_argument("--url", nargs='?', help="The REST API endpoint fronting the modules database, of the form protocol://host:port, where protocol is http or https")
+    parser.add_argument('--walk', action="store_true", default=None) # , action='store_true', default=False
     parser.add_argument("dir", nargs='?', help="The directory to watch", default=os.getcwd())
-    args = parser.parse_args()
 
+    # UGLY: Is this the only way to do this?
+    args = copy.deepcopy(
+        vars(
+            parser.parse_args()
+        )
+    )
+
+    # UGLY
+    if args['url'] is None:
+        del args['url']
+    if args['walk'] is None:
+        del args['walk']
+
+    print "command-line args"
+    print args
+
+    # Get the preferences out of a dot file in the target directory
+    # Command-line options take precedence
+    prefs = {}
+    pref_path = args['dir'] + "/.modulesdb"
+    if os.path.exists(pref_path):
+        print "Reading preferences from " + pref_path
+        pref_file = open(pref_path, "r")
+        prefs = json.load(pref_file)
+        print prefs
+
+    prefs.update(args)
+
+    print prefs
 
     # Start the script in a directory you want to observe
-    BASEDIR = os.path.abspath(args.dir)
-    URL = args.url
+    BASEDIR = os.path.abspath(prefs['dir'])
+    URL = prefs['url']
 
-    if args.walk:
+    if prefs['walk']:
         print "Walking " + BASEDIR
         walk(BASEDIR)
 
-    print "Observing " + BASEDIR
+    print "Observing " + BASEDIR + "…"
     observe()
