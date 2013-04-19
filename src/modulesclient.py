@@ -49,6 +49,8 @@ class ModulesClient(object):
             auth=self.auth,
             data=body
         )
+        if r.status_code > 299 or r.status_code < 200:
+            raise Exception(r.status_code)
         return ("PUT", r.status_code, params['uri'])
 
     def put_file(self, uri, file_path, transaction=None):
@@ -70,6 +72,8 @@ class ModulesClient(object):
             headers=headers, 
             auth=self.auth
         )
+        if r.status_code > 299 or r.status_code < 200:
+            raise Exception(r.status_code)
         return ("DELETE", r.status_code, self.root + uri)
 
     def move(self, from_uri, to_uri, body, transaction=None):
@@ -85,16 +89,23 @@ class ModulesClient(object):
         return ("MOVE", msg[1], self.root + to_uri)
 
     def _create_transaction(self):
+        "Create a transaction and return its id"
         r = requests.post(
             self.url + "/v1/transactions",
             auth=self.auth,
             allow_redirects=False
         )
+        if r.status_code != 303:
+            raise Exception(r.status_code)
         return r.headers['Location'].split('/')[3]
 
     def _commit_transaction(self, transaction):
+        "Commit a transaction"
         params = {"result": "commit"}
         r =  requests.post(
+            self.url + "/v1/transactions/" + transaction,
             params=params,
             auth=self.auth
         )
+        if r.status_code > 299 or r.status_code < 200:
+            raise Exception(r.status_code)
