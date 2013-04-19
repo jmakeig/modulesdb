@@ -95,7 +95,6 @@ class ModulesClient(object):
     def _commit_transaction(self, transaction):
         params = {"result": "commit"}
         r =  requests.post(
-            self.url + "/v1/transactions" + transaction,
             params=params,
             auth=self.auth
         )
