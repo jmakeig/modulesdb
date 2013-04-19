@@ -180,7 +180,6 @@ if __name__ == '__main__':
 
     # Start the script in a directory you want to observe
     BASEDIR = os.path.abspath(prefs['dir'])
-    URL = prefs['url']
 
     if prefs['walk']:
         print "Walking " + BASEDIR
