@@ -16,7 +16,7 @@
 # limitations under the License.
 
 """
-Monitors our code & docs for changes
+Pushes changes to a local directory to a remote modulues database fronted by a REST API endpoint.
 """
 import os
 import sys
@@ -28,18 +28,23 @@ import argparse
 import getpass
 import json
 
-from restput import put_file, delete_file
 from watchdog.observers import Observer
 from watchdog.events import FileSystemEventHandler
+from modulesclient import ModulesClient
 
 def walk(top):
     "Walks the file system recursively starting at top, putting each file to the globally defined REST service."
     for root, dirs, files in os.walk(top):
         for name in files:
-            # print os.path.join(root, name)
-            print format_put_message(put_file_contents(os.path.join(root, name)))
+            print format_put_message(
+                modules_client.put_file(
+                    uri=os.path.relpath(os.path.join(root, name), BASEDIR),
+                    file_path=os.path.join(root, name)
+                )
+            )
 
 def format_put_message(msg):
+    "Format the return values for reporting to stdout"
     # msg is of the form (HTTP verb, URI of the affected doc, status code)
     # 201 is added or
     # print msg
@@ -50,12 +55,6 @@ def format_put_message(msg):
         verb = "+ Added"
     return verb + " " + msg[2]
 
-def put_file_contents(path):
-    "Sends the contents of the file at the input path to the globally configured REST URL"
-    f = open(path, "r")
-    msg = put_file(uri=os.path.relpath(path, BASEDIR), body=f.read(), service_url=URL)
-    f.close()
-    return msg
 
 
 class ChangeHandler(FileSystemEventHandler):
@@ -69,45 +68,37 @@ class ChangeHandler(FileSystemEventHandler):
         if event.is_directory:
             return
         else: 
-            # getext(event.src_path) == '.py':
-            # print "Changed " + os.path.relpath(event.src_path, BASEDIR)
-            # f = open(event.src_path, "r")
-            # put_file(uri=os.path.relpath(event.src_path, BASEDIR), body=f.read(), service_url=URL)
-            print format_put_message(put_file_contents(event.src_path))
+            print format_put_message(
+                modules_client.put_file(uri=os.path.relpath(event.src_path, BASEDIR), file_path=event.src_path)
+            )
 
     def on_modified(self, event):
         # print "modified event"
         if event.is_directory:
             return
         else: 
-            # getext(event.src_path) == '.py':
-            # print "Changed " + os.path.relpath(event.src_path, BASEDIR)
-            # f = open(event.src_path, "r")
-            # put_file(uri=os.path.relpath(event.src_path, BASEDIR), body=f.read(), service_url=URL)
-            print format_put_message(put_file_contents(event.src_path))
+            print format_put_message(
+                modules_client.put_file(uri=os.path.relpath(event.src_path, BASEDIR), file_path=event.src_path)
+            )
 
     def on_deleted(self, event):
         # print "deleted event"
         if event.is_directory:
             return
         else: 
-            # getext(event.src_path) == '.py':
-            # print "Changed " + os.path.relpath(event.src_path, BASEDIR)
-            # f = open(event.src_path, "r")
-            # put_file(uri=os.path.relpath(event.src_path, BASEDIR), body=f.read(), service_url=URL)
-            print format_put_message(delete_file(uri=os.path.relpath(event.src_path, BASEDIR), service_url=URL))
+            print format_put_message(
+                modules_client.delete(uri=os.path.relpath(event.src_path, BASEDIR))
+            )
 
     def on_moved(self, event):
-        # print "moved event"
-        # TODO: This needs to be wrapped in a transaction and give better feedback
-
-        #move_file(src_uri=os.path.relpath(event.src_path, BASEDIR), dest_uri=)
-
-        delete_file(uri=os.path.relpath(event.src_path, BASEDIR), service_url=URL)
-        print format_put_message(put_file_contents(event.dest_path))
+        # delete_file(uri=os.path.relpath(event.src_path, BASEDIR), service_url=URL)
+        print format_put_message(
+            # put_file_contents(event.dest_path)
+            modules_client.move_file(from_uri=os.path.relpath(event.src_path, BASEDIR), to_uri=os.path.relpath(event.dest_path, BASEDIR), file_path=event.dest_path)
+        )
 
     def on_any_event(self, event):
-        print event
+        # print event
         pass
 
         
@@ -143,25 +134,27 @@ if __name__ == '__main__':
 
     # Parse the command line arguments
     parser = argparse.ArgumentParser()
-    parser.add_argument("--url", nargs='?', help="The REST API endpoint fronting the modules database, of the form protocol://host:port, where protocol is http or https")
-    parser.add_argument('--walk', action="store_true", default=None) # , action='store_true', default=False
+    parser.add_argument("--url", default=None, help="The REST API endpoint fronting the modules database, of the form protocol://host:port, where protocol is http or https")
+    parser.add_argument('--auth', default=None, choices=["none", "digest", "basic", "cert"]) # None here means that it can be pruned such taht the overlay on the dot file just works
+    parser.add_argument('--user', "-u", default=None, help="The username to use to authenticate against the REST service")
+    parser.add_argument('--password', "-p", default=None, help="The password to use to authenticate against the REST service")
+    #parser.add_argument('--cert', "-E", help="(SSL) Tells curl to use the specified client certificate file when getting a file with HTTPS, FTPS or another SSL-based protocol. The certificate must be in PEM format. If the optional password isn't specified, it will be queried for on the terminal. Note that this option assumes a \"certificate\" file that is the private key and the private certificate concatenated! See --cert and --key to specify them independently.")
+    #parser.add_argument('--key', help="(SSL/SSH) Private key file name. Allows you to provide your private key in this separate file.")
+    #parser.add_argument('--insecure', "-k")
+    
+    # Command-line only
+    parser.add_argument('--walk', action="store_true", default=False, help="Whether to recusively push all of the files to the modules database before begining observation")
+    parser.add_argument("--debug", action="store_true", default=False)
+    #parser.add_argument('--quiet', '-q', action="store_true", default=False, help="")
+
     parser.add_argument("dir", nargs='?', help="The directory to watch", default=os.getcwd())
 
-    # UGLY: Is this the only way to do this?
-    args = copy.deepcopy(
-        vars(
-            parser.parse_args()
-        )
-    )
+    # UGLY: Turn the Namesapce into a dictionary. Is this the only way to do this?
+    args = copy.deepcopy(vars(parser.parse_args()))
 
-    # UGLY
-    if args['url'] is None:
-        del args['url']
-    if args['walk'] is None:
-        del args['walk']
-
-    print "command-line args"
-    print args
+    # Prune Nones from command-line args
+    # http://stackoverflow.com/questions/2544710/how-i-can-get-rid-of-none-values-in-dictionary
+    args = dict((k,v) for k,v in args.iteritems() if v is not None)
 
     # Get the preferences out of a dot file in the target directory
     # Command-line options take precedence
@@ -171,17 +164,19 @@ if __name__ == '__main__':
         print "Reading preferences from " + pref_path
         pref_file = open(pref_path, "r")
         prefs = json.load(pref_file)
-        print prefs
+        # print prefs
 
     # Overlay command-line arguments on top of the preferences read from the dot file
     prefs.update(args)
 
     # Ask for a password if it's not provided
-    # TODO: There are scenarios where this isn't needed.
-    if "password" not in prefs:
-        prefs['password'] = getpass.getpass()
+    if prefs['auth'] in ['digest', 'basic'] and "password" not in prefs:
+        prefs['password'] = getpass.getpass("Password for " + prefs['url'] + ": ")
 
-    print prefs
+    if prefs['debug']:
+        print prefs
+
+    modules_client = ModulesClient(prefs)
 
     # Start the script in a directory you want to observe
     BASEDIR = os.path.abspath(prefs['dir'])
