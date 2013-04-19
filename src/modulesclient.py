@@ -39,6 +39,8 @@ class ModulesClient(object):
     def put(self, uri, body, transaction=None):
         "Send a file to the remote modules database. URIs are prepended with the root."
         params = {"uri": self.root + uri, "perm:app-user": "execute"} # TODO: Fix perms
+        if transaction is not None:
+            params['txid'] = transaction
         headers = {}
         r = requests.put(
             self.url + "/v1/documents", 
@@ -59,6 +61,8 @@ class ModulesClient(object):
     def delete(self, uri, transaction=None):
         "Delete a remote file identified by the URI."
         params = {"uri": self.root + uri}
+        if transaction is not None:
+            params['txid'] = transaction
         headers = {}
         r = requests.delete(
             self.url + "/v1/documents", 
@@ -72,8 +76,26 @@ class ModulesClient(object):
         pass
 
     def move_file(self, from_uri, to_uri, file_path, transaction=None):
-        self.delete(from_uri, transaction)
-        msg = self.put_file(to_uri, file_path, transaction)
+        tx = transaction
+        if transaction is None:
+            tx = self._create_transaction();
+        self.delete(from_uri, tx)
+        msg = self.put_file(to_uri, file_path, tx)
+        self._commit_transaction(tx)
         return ("MOVE", msg[1], self.root + to_uri)
 
+    def _create_transaction(self):
+        r = requests.post(
+            self.url + "/v1/transactions",
+            auth=self.auth,
+            allow_redirects=False
+        )
+        return r.headers['Location'].split('/')[3]
 
+    def _commit_transaction(self, transaction):
+        params = {"result": "commit"}
+        r =  requests.post(
+            self.url + "/v1/transactions" + transaction,
+            params=params,
+            auth=self.auth
+        )
