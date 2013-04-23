@@ -1,0 +1,7 @@
+{
+  "url": "http://localhost:9556",
+  "auth": "digest",
+  "user": "admin",
+  "root": "/",
+  "ignore": [".*"]
+}
