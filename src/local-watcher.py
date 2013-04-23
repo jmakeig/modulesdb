@@ -27,6 +27,7 @@ import copy
 import argparse
 import getpass
 import json
+import fnmatch
 
 from watchdog.observers import Observer
 from watchdog.events import FileSystemEventHandler
@@ -36,10 +37,14 @@ def walk(top):
     "Walks the file system recursively starting at top, putting each file to the globally defined REST service."
     for root, dirs, files in os.walk(top):
         for name in files:
+            asb = os.path.join(root, name)
+            rel = os.path.relpath(asb, BASEDIR)
+            # if not fnmatch.fnmatch(rel, ".*"):
             print format_put_message(
                 modules_client.put_file(
-                    uri=os.path.relpath(os.path.join(root, name), BASEDIR),
-                    file_path=os.path.join(root, name)
+                    uri=rel,
+                    # os.path.join(root, name) is the absolute path
+                    file_path=asb
                 )
             )
 
@@ -103,11 +108,11 @@ class ChangeHandler(FileSystemEventHandler):
 
         
         
-def observe(recursive=True):
+def observe(directory, recursive=True):
     "Observe folder and file changes. Only supports"
     event_handler = ChangeHandler()
     observer = Observer()
-    observer.schedule(event_handler, BASEDIR, recursive=recursive)
+    observer.schedule(event_handler, directory, recursive=recursive)
     observer.start()
     try: 
         while True: 
@@ -131,59 +136,69 @@ if __name__ == '__main__':
     # What else needs to be done to support running this in the background and logging somewhere else? (Perhaps nothing)
     # What about when something fails? A local rm that results in a connection or auth error on the server will leave things in an inconsistent state, for example.
 
+    def get_configuration(working_dir, command_line):
+        "Get the configuration from a combination of the command line input and a dot file"
+        # Parse the command line arguments
+        parser = argparse.ArgumentParser()
+        parser.add_argument("--url", default=None, help="The REST API endpoint fronting the modules database, of the form protocol://host:port, where protocol is http or https")
+        parser.add_argument('--auth', default=None, choices=["none", "digest", "basic", "cert"], help="The HTTP authentication method to use.") # None here means that it can be pruned such taht the overlay on the dot file just works
+        parser.add_argument('--user', '-u', default=None, help="The username to use to authenticate against the REST service.")
+        parser.add_argument('--password', '-p', nargs="?", default=None, help="The password to use to authenticate against the REST service. If the authentication method requires a password and you don't supply one at the command line or in the prefrences file you will be prompted for it.")
+        #parser.add_argument('--cert', "-E", help="(SSL) Tells curl to use the specified client certificate file when getting a file with HTTPS, FTPS or another SSL-based protocol. The certificate must be in PEM format. If the optional password isn't specified, it will be queried for on the terminal. Note that this option assumes a \"certificate\" file that is the private key and the private certificate concatenated! See --cert and --key to specify them independently.")
+        #parser.add_argument('--key', help="(SSL/SSH) Private key file name. Allows you to provide your private key in this separate file.")
+        #parser.add_argument('--insecure', "-k")
+        
+        # Command-line only
+        parser.add_argument('--config', '-K', default=".modulesdb", help="The location of the JSON configuration file. Command-line options take precedence. Defaults to .modulesdb at the root of the directory being observed.")
+        parser.add_argument('--walk', action="store_true", default=False, help="Whether to recusively push all of the files to the modules database before begining observation.")
+        parser.add_argument("--debug", action="store_true", default=False, help="Print out some extra debugging information.")
+        #parser.add_argument('--quiet', '-q', action="store_true", default=False, help="")
 
-    # Parse the command line arguments
-    parser = argparse.ArgumentParser()
-    parser.add_argument("--url", default=None, help="The REST API endpoint fronting the modules database, of the form protocol://host:port, where protocol is http or https")
-    parser.add_argument('--auth', default=None, choices=["none", "digest", "basic", "cert"]) # None here means that it can be pruned such taht the overlay on the dot file just works
-    parser.add_argument('--user', "-u", default=None, help="The username to use to authenticate against the REST service")
-    parser.add_argument('--password', "-p", default=None, help="The password to use to authenticate against the REST service")
-    #parser.add_argument('--cert', "-E", help="(SSL) Tells curl to use the specified client certificate file when getting a file with HTTPS, FTPS or another SSL-based protocol. The certificate must be in PEM format. If the optional password isn't specified, it will be queried for on the terminal. Note that this option assumes a \"certificate\" file that is the private key and the private certificate concatenated! See --cert and --key to specify them independently.")
-    #parser.add_argument('--key', help="(SSL/SSH) Private key file name. Allows you to provide your private key in this separate file.")
-    #parser.add_argument('--insecure', "-k")
-    
-    # Command-line only
-    parser.add_argument('--walk', action="store_true", default=False, help="Whether to recusively push all of the files to the modules database before begining observation")
-    parser.add_argument("--debug", action="store_true", default=False)
-    #parser.add_argument('--quiet', '-q', action="store_true", default=False, help="")
+        parser.add_argument("dir", nargs='?', help="The directory to watch. Defaults to the current working directory.", default=working_dir)
 
-    parser.add_argument("dir", nargs='?', help="The directory to watch", default=os.getcwd())
+        # UGLY: Turn the Namesapce into a dictionary. Is this the only way to do this?
+        args = copy.deepcopy(
+            vars(
+                # http://docs.python.org/2/library/sys.html#sys.argv
+                parser.parse_args(command_line[1:])
+            )
+        )
 
-    # UGLY: Turn the Namesapce into a dictionary. Is this the only way to do this?
-    args = copy.deepcopy(vars(parser.parse_args()))
+        # Prune Nones from command-line args
+        # http://stackoverflow.com/questions/2544710/how-i-can-get-rid-of-none-values-in-dictionary
+        args = dict((k,v) for k,v in args.iteritems() if v is not None)
 
-    # Prune Nones from command-line args
-    # http://stackoverflow.com/questions/2544710/how-i-can-get-rid-of-none-values-in-dictionary
-    args = dict((k,v) for k,v in args.iteritems() if v is not None)
+        # Get the preferences out of a dot file in the target directory
+        # Command-line options take precedence
+        prefs = {}
+        pref_path = args['dir'] + "/" + args['config']
+        if os.path.isfile(pref_path):
+            print "Reading preferences from " + pref_path
+            pref_file = open(pref_path, "r")
+            prefs = json.load(pref_file)
+            # print prefs
 
-    # Get the preferences out of a dot file in the target directory
-    # Command-line options take precedence
-    prefs = {}
-    pref_path = args['dir'] + "/.modulesdb"
-    if os.path.exists(pref_path):
-        print "Reading preferences from " + pref_path
-        pref_file = open(pref_path, "r")
-        prefs = json.load(pref_file)
-        # print prefs
+        # Overlay command-line arguments on top of the preferences read from the dot file
+        prefs.update(args)
 
-    # Overlay command-line arguments on top of the preferences read from the dot file
-    prefs.update(args)
+        # Ask for a password if it's not provided
+        if prefs['auth'] in ['digest', 'basic'] and "password" not in prefs:
+            prefs['password'] = getpass.getpass("Password for " + prefs['url'] + ": ")
 
-    # Ask for a password if it's not provided
-    if prefs['auth'] in ['digest', 'basic'] and "password" not in prefs:
-        prefs['password'] = getpass.getpass("Password for " + prefs['url'] + ": ")
+        if prefs['debug']:
+            print prefs
+        return prefs
 
-    if prefs['debug']:
-        print prefs
+    config = get_configuration(os.getcwd(), sys.argv)
 
-    modules_client = ModulesClient(prefs)
+    modules_client = ModulesClient(config)
 
     # Start the script in a directory you want to observe
-    BASEDIR = os.path.abspath(prefs['dir'])
+    BASEDIR = os.path.abspath(config['dir'])
 
-    if prefs['walk']:
+    if config['walk']:
         print "Walking " + BASEDIR
         walk(BASEDIR)
 
     print "Observing " + BASEDIR + "…"
-    observe()
+    observe(BASEDIR)
