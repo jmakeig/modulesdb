@@ -14,6 +14,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import urllib
 import requests
 from requests.auth import HTTPDigestAuth
 
@@ -49,8 +50,10 @@ class ModulesClient(object):
             auth=self.auth,
             data=body
         )
+        print r.url
         if r.status_code > 299 or r.status_code < 200:
-            raise Exception(r.status_code)
+
+            raise Exception(r.status_code, r.text)
         return ("PUT", r.status_code, params['uri'])
 
     def put_file(self, uri, file_path, transaction=None):
