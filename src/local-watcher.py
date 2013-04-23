@@ -65,6 +65,14 @@ def format_put_message(msg):
 class ChangeHandler(FileSystemEventHandler):
     "Handle changes to files and directories."
 
+    def __init__(self, directory):
+        "Initialize with the base directory."
+        self.directory = directory
+
+    def _rel(self, path):
+        "Use the stored base directory to calculate the relative path with os.path.relpath."
+        return os.path.relpath(path, self.directory)
+
     # TODO: Exclusion lists (e.g. .git, .DS_Store, Thumbs.db), similar to the way .gitignore works. 
     # Call it .mlignore? Is there a Python class that already does this matching?
 
@@ -74,7 +82,7 @@ class ChangeHandler(FileSystemEventHandler):
             return
         else: 
             print format_put_message(
-                modules_client.put_file(uri=os.path.relpath(event.src_path, BASEDIR), file_path=event.src_path)
+                modules_client.put_file(uri=self._rel(event.src_path), file_path=event.src_path)
             )
 
     def on_modified(self, event):
@@ -83,7 +91,7 @@ class ChangeHandler(FileSystemEventHandler):
             return
         else: 
             print format_put_message(
-                modules_client.put_file(uri=os.path.relpath(event.src_path, BASEDIR), file_path=event.src_path)
+                modules_client.put_file(uri=self._rel(event.src_path), file_path=event.src_path)
             )
 
     def on_deleted(self, event):
@@ -92,14 +100,14 @@ class ChangeHandler(FileSystemEventHandler):
             return
         else: 
             print format_put_message(
-                modules_client.delete(uri=os.path.relpath(event.src_path, BASEDIR))
+                modules_client.delete(uri=self._rel(event.src_path))
             )
 
     def on_moved(self, event):
-        # delete_file(uri=os.path.relpath(event.src_path, BASEDIR), service_url=URL)
+        # print "moved event"
         print format_put_message(
             # put_file_contents(event.dest_path)
-            modules_client.move_file(from_uri=os.path.relpath(event.src_path, BASEDIR), to_uri=os.path.relpath(event.dest_path, BASEDIR), file_path=event.dest_path)
+            modules_client.move_file(from_uri=self._rel(event.src_path), to_uri=self._rel(event.dest_path), file_path=event.dest_path)
         )
 
     def on_any_event(self, event):
@@ -110,7 +118,7 @@ class ChangeHandler(FileSystemEventHandler):
         
 def observe(directory, recursive=True):
     "Observe folder and file changes. Only supports"
-    event_handler = ChangeHandler()
+    event_handler = ChangeHandler(directory)
     observer = Observer()
     observer.schedule(event_handler, directory, recursive=recursive)
     observer.start()
