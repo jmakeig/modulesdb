@@ -28,14 +28,29 @@ import argparse
 import getpass
 import json
 import fnmatch
+import re
 
 from watchdog.observers import Observer
 from watchdog.events import FileSystemEventHandler
 from modulesclient import ModulesClient
 
-def walk(top):
+def walk(top, directory_exclusions=[], file_exclusions=[]):
     "Walks the file system recursively starting at top, putting each file to the globally defined REST service."
+
+    # TODO: Figure out how to separate out directory and file exclusions
+    # http://stackoverflow.com/a/5141829/563324
+    excludes = ['*/.hidden']
+    excludes = r'|'.join([fnmatch.translate(x) for x in excludes]) or r'$.'
+    # print excludes
+
     for root, dirs, files in os.walk(top):
+        
+        # print top, root, dirs, [os.path.join(os.path.relpath(root, top), d) for d in dirs]
+        
+        # dirs[:] = [os.path.join(top, d) for d in dirs]
+        print dirs
+        dirs[:] = [d for d in dirs if not re.match(excludes, os.path.join(os.path.relpath(root, top), d))]
+
         for name in files:
             asb = os.path.join(root, name)
             rel = os.path.relpath(asb, BASEDIR)
@@ -43,7 +58,6 @@ def walk(top):
             print format_put_message(
                 modules_client.put_file(
                     uri=rel,
-                    # os.path.join(root, name) is the absolute path
                     file_path=asb
                 )
             )
