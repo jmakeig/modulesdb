@@ -37,6 +37,23 @@ class ModulesClient(object):
         else: 
             raise Exception("Unsupported auth_type " + self.auth_type)
 
+        self._config()
+
+    def _config(self):
+        "Set the default error format as JSON for easier conversion into Python data structures."
+        # http://localhost:8003/v1/config/properties/error-format?format=json
+        # {"error-format": "json"}
+        r = requests.put(
+            self.url + "/v1/config/properties/error-format", 
+            params={"format": "json"}, 
+            headers={}, 
+            auth=self.auth,
+            data='{"error-format": "json"}'
+        )
+        # print r.url
+        if r.status_code > 299 or r.status_code < 200:
+            raise Exception(r.status_code, r.text)
+
     def put(self, uri, body, transaction=None):
         "Send a file to the remote modules database. URIs are prepended with the root."
         params = {"uri": self.root + uri, "perm:app-user": "execute"} # TODO: Fix perms
