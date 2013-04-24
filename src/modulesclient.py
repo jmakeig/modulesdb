@@ -68,6 +68,7 @@ class ModulesClient(object):
             data=body
         )
         print r.url
+        # print r.url
         if r.status_code > 299 or r.status_code < 200:
 
             raise Exception(r.status_code, r.text)
