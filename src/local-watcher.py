@@ -34,33 +34,47 @@ from watchdog.observers import Observer
 from watchdog.events import FileSystemEventHandler
 from modulesclient import ModulesClient
 
-def walk(top, directory_exclusions=[], file_exclusions=[]):
+def walk(top, exclusions=[]):
     "Walks the file system recursively starting at top, putting each file to the globally defined REST service."
 
     # TODO: Figure out how to separate out directory and file exclusions
     # http://stackoverflow.com/a/5141829/563324
-    excludes = ['*/.hidden']
+    excludes = ['.modulesdb', '.*', '*/.*']
     excludes = r'|'.join([fnmatch.translate(x) for x in excludes]) or r'$.'
     # print excludes
+
+    def _rel(path, start):
+        "Pass-through to os.path.relpath except that it returns an empty string instead of '.' for exact matches."
+        r = os.path.relpath(path, start)
+        if "." == r:
+            return ""
+        return r
 
     for root, dirs, files in os.walk(top):
         
         # print top, root, dirs, [os.path.join(os.path.relpath(root, top), d) for d in dirs]
         
         # dirs[:] = [os.path.join(top, d) for d in dirs]
-        print dirs
-        dirs[:] = [d for d in dirs if not re.match(excludes, os.path.join(os.path.relpath(root, top), d))]
+        # print dirs
+        # print (root, top, os.path.relpath(root, top))
+        # for d in dirs:
+        #     print (os.path.join(_rel(root, top), d), bool(re.match(excludes, os.path.join(_rel(root, top), d))))
+        dirs[:] = [d for d in dirs if not re.match(excludes, os.path.join(_rel(root, top), d))]        
+        #print dirs
 
         for name in files:
             asb = os.path.join(root, name)
-            rel = os.path.relpath(asb, BASEDIR)
-            # if not fnmatch.fnmatch(rel, ".*"):
-            print format_put_message(
-                modules_client.put_file(
-                    uri=rel,
-                    file_path=asb
+            rel = _rel(asb, top)
+            #print (rel, os.path.join(os.path.relpath(root, top)))
+            if not re.match(excludes, rel):
+                print format_put_message(
+                    modules_client.put_file(
+                        uri=rel,
+                        file_path=asb
+                    )
                 )
-            )
+            # else:
+            #     print "  Ignoring " + rel
 
 def format_put_message(msg):
     "Format the return values for reporting to stdout"
@@ -82,6 +96,7 @@ class ChangeHandler(FileSystemEventHandler):
     def __init__(self, directory):
         "Initialize with the base directory."
         self.directory = directory
+        # self.matcher = Matcher()
 
     def _rel(self, path):
         "Use the stored base directory to calculate the relative path with os.path.relpath."
