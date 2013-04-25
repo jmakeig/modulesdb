@@ -39,8 +39,7 @@ def walk(top, exclusions=[]):
 
     # TODO: Figure out how to separate out directory and file exclusions
     # http://stackoverflow.com/a/5141829/563324
-    excludes = ['.modulesdb', '.*', '*/.*']
-    excludes = r'|'.join([fnmatch.translate(x) for x in excludes]) or r'$.'
+    excludes = r'|'.join([fnmatch.translate(x) for x in exclusions]) or r'$.'
     # print excludes
 
     def _rel(path, start):
@@ -93,7 +92,7 @@ def format_put_message(msg):
 class ChangeHandler(FileSystemEventHandler):
     "Handle changes to files and directories."
 
-    def __init__(self, directory, exclusions=['.modulesdb', '.*', '*/.*']):
+    def __init__(self, directory, exclusions=[]):
         "Initialize with the base directory."
         self.directory = directory
         self.exclusions = exclusions
@@ -164,9 +163,9 @@ class ChangeHandler(FileSystemEventHandler):
 
         
         
-def observe(directory, recursive=True):
+def observe(directory, recursive=True, exclusions=[]):
     "Observe folder and file changes. Only supports"
-    event_handler = ChangeHandler(directory)
+    event_handler = ChangeHandler(directory, exclusions)
     observer = Observer()
     observer.schedule(event_handler, directory, recursive=recursive)
     observer.start()
@@ -255,7 +254,7 @@ if __name__ == '__main__':
 
     if config['walk']:
         print "Walking " + BASEDIR
-        walk(BASEDIR)
+        walk(BASEDIR, config['ignore'])
 
     print "Observing " + BASEDIR + "…"
-    observe(BASEDIR)
+    observe(BASEDIR, recursive=True, exclusions=config['ignore'])
