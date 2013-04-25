@@ -106,12 +106,16 @@ class ChangeHandler(FileSystemEventHandler):
             return ""
         return r
 
+    def _is_excluded(self, path):
+        "Whether a particular path is excluded based on the list passed in at initialization."
+        return bool(re.match(self.exclusions_re, self._rel(path)))
+
     # TODO: Exclusion lists (e.g. .git, .DS_Store, Thumbs.db), similar to the way .gitignore works. 
     # Call it .mlignore? Is there a Python class that already does this matching?
 
     def on_created(self, event):
         # print "created event"
-        if event.is_directory or re.match(self.exclusions_re, self._rel(event.src_path)):
+        if event.is_directory or self._is_excluded(event.src_path):
             return
         else: 
             print format_put_message(
@@ -120,7 +124,7 @@ class ChangeHandler(FileSystemEventHandler):
 
     def on_modified(self, event):
         # print "modified event " + self._rel(event.src_path)
-        if event.is_directory or re.match(self.exclusions_re, self._rel(event.src_path)):
+        if event.is_directory or self._is_excluded(event.src_path):
             return
         else: 
             print format_put_message(
@@ -129,7 +133,7 @@ class ChangeHandler(FileSystemEventHandler):
 
     def on_deleted(self, event):
         # print "deleted event"
-        if event.is_directory or re.match(self.exclusions_re, self._rel(event.src_path)):
+        if event.is_directory or self._is_excluded(event.src_path):
             return
         else: 
             print format_put_message(
@@ -138,12 +142,12 @@ class ChangeHandler(FileSystemEventHandler):
 
     def on_moved(self, event):
         # TODO: Clean all of this logic and repeated code up
-        if re.match(self.exclusions_re, self._rel(event.src_path)) and not re.match(self.exclusions_re, self._rel(event.dest_path)):
+        if self._is_excluded(event.src_path) and not self._is_excluded(event.dest_path):
             print format_put_message(
                 modules_client.put_file(uri=self._rel(event.dest_path), file_path=event.dest_path)
             )
             return
-        if not re.match(self.exclusions_re, self._rel(event.src_path)) and re.match(self.exclusions_re, self._rel(event.dest_path)):
+        if not self._is_excluded(event.src_path) and self._is_excluded(event.dest_path):
             print format_put_message(
                 modules_client.delete(uri=self._rel(event.src_path))
             )
