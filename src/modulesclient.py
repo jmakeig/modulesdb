@@ -67,7 +67,6 @@ class ModulesClient(object):
             auth=self.auth,
             data=body
         )
-        print r.url
         # print r.url
         if r.status_code > 299 or r.status_code < 200:
 
