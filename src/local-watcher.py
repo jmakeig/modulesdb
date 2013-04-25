@@ -93,21 +93,25 @@ def format_put_message(msg):
 class ChangeHandler(FileSystemEventHandler):
     "Handle changes to files and directories."
 
-    def __init__(self, directory):
+    def __init__(self, directory, exclusions=['.modulesdb', '.*', '*/.*']):
         "Initialize with the base directory."
         self.directory = directory
-        # self.matcher = Matcher()
+        self.exclusions = exclusions
+        self.exclusions_re = r'|'.join([fnmatch.translate(x) for x in exclusions]) or r'$.'
 
     def _rel(self, path):
         "Use the stored base directory to calculate the relative path with os.path.relpath."
-        return os.path.relpath(path, self.directory)
+        r = os.path.relpath(path, self.directory)
+        if "." == r:
+            return ""
+        return r
 
     # TODO: Exclusion lists (e.g. .git, .DS_Store, Thumbs.db), similar to the way .gitignore works. 
     # Call it .mlignore? Is there a Python class that already does this matching?
 
     def on_created(self, event):
         # print "created event"
-        if event.is_directory:
+        if event.is_directory or re.match(self.exclusions_re, self._rel(event.src_path)):
             return
         else: 
             print format_put_message(
@@ -115,8 +119,8 @@ class ChangeHandler(FileSystemEventHandler):
             )
 
     def on_modified(self, event):
-        # print "modified event"
-        if event.is_directory:
+        # print "modified event " + self._rel(event.src_path)
+        if event.is_directory or re.match(self.exclusions_re, self._rel(event.src_path)):
             return
         else: 
             print format_put_message(
@@ -125,7 +129,7 @@ class ChangeHandler(FileSystemEventHandler):
 
     def on_deleted(self, event):
         # print "deleted event"
-        if event.is_directory:
+        if event.is_directory or re.match(self.exclusions_re, self._rel(event.src_path)):
             return
         else: 
             print format_put_message(
@@ -133,6 +137,17 @@ class ChangeHandler(FileSystemEventHandler):
             )
 
     def on_moved(self, event):
+        # TODO: Clean all of this logic and repeated code up
+        if re.match(self.exclusions_re, self._rel(event.src_path)) and not re.match(self.exclusions_re, self._rel(event.dest_path)):
+            print format_put_message(
+                modules_client.put_file(uri=self._rel(event.dest_path), file_path=event.dest_path)
+            )
+            return
+        if not re.match(self.exclusions_re, self._rel(event.src_path)) and re.match(self.exclusions_re, self._rel(event.dest_path)):
+            print format_put_message(
+                modules_client.delete(uri=self._rel(event.src_path))
+            )
+            return
         # print "moved event"
         print format_put_message(
             # put_file_contents(event.dest_path)
