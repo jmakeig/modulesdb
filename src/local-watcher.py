@@ -178,18 +178,6 @@ def observe(directory, recursive=True, exclusions=[]):
     observer.join()
 
 if __name__ == '__main__':
-    # TODO: Look for settings in a config file, override with command line
-    #   * Directory to watch: Defaults to current working directory if not specified. Command line only.
-    #   * Whether to do a full recursive walk first: Command line only
-    #   * URL for the REST service (http, https)
-    #   * Root modules database directory: Do we need this?
-    #   * Authentication (basic, digest, none) and credentials (user, password, client cert): Should this be command-line only?
-    #   * List of exclusions: First .dot files globally then should support .gitignore-style match expressions
-    #   * Permissions on files: Can this be global (i.e. does XQuery only need execute perms and JavaScript only need read?)? Map to directory? Extension?
-
-    # What else needs to be done to support running this in the background and logging somewhere else? (Perhaps nothing)
-    # What about when something fails? A local rm that results in a connection or auth error on the server will leave things in an inconsistent state, for example.
-
     def get_configuration(working_dir, command_line):
         "Get the configuration from a combination of the command line input and a dot file"
         # Parse the command line arguments
