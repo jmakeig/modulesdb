@@ -244,12 +244,30 @@ if __name__ == '__main__':
         # Overlay command-line arguments on top of the preferences read from the dot file
         prefs.update(args)
 
+        def parse_perms(perms, prefix):
+            "Turns something like ['a:A', 'b:B', 'a:C'] into {'a': ['A', 'C'], 'b': ['B']}"
+            d = {}
+            for p in perms:
+                kv = p.split(':')
+                k = prefix + kv[0]
+                if k not in d:
+                    d[k] = [kv[1]]
+                else:
+                    d[k].append(kv[1])
+            return d
+
         # Ask for a password if it's not provided
         if prefs['auth'] in ['digest', 'basic'] and "password" not in prefs:
             prefs['password'] = getpass.getpass("Password for " + prefs['url'] + ": ")
 
+        if not isinstance(prefs['permissions'], dict):
+            prefs['permissions'] = parse_perms(prefs['permissions'], 'perm:')
+        else:
+            prefs['permissions'] = dict(('perm:' + k,v) for k,v in prefs['permissions'].iteritems())
+
         if prefs['debug']:
-            print prefs
+            print prefs['permissions']
+
         return prefs
 
     config = get_configuration(os.getcwd(), sys.argv)

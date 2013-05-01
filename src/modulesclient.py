@@ -29,23 +29,8 @@ class ModulesClient(object):
         cert = None
         cert_password = None
         self.root = config.get('root')
-        
-        def parse_perms(perms, prefix):
-            "Turns something like ['a:A', 'b:B', 'a:C'] into {'a': ['A', 'C'], 'b': ['B']}"
-            d = {}
-            for p in perms:
-                kv = p.split(':')
-                k = prefix + kv[0]
-                if k not in d:
-                    d[k] = [kv[1]]
-                else:
-                    d[k].append(kv[1])
-            return d
-
         # config.get('permissions') should be a list of {"role": "privilege"} pairs.
-        self.permissions = parse_perms(config.get('permissions'), 'perm:')
-
-        print self.permissions
+        self.permissions = config.get('permissions')
 
         if self.auth_type == "digest":
             self.auth = HTTPDigestAuth(self.user, self.password)
@@ -65,7 +50,6 @@ class ModulesClient(object):
             auth=self.auth,
             data='{"error-format": "json"}'
         )
-        # print r.url
         if r.status_code > 299 or r.status_code < 200:
             raise Exception(r.status_code, r.text)
 
@@ -73,7 +57,6 @@ class ModulesClient(object):
         "Send a file to the remote modules database. URIs are prepended with the root."
         params = {"uri": self.root + uri}
         params.update(self.permissions)
-        print params
         if transaction is not None:
             params['txid'] = transaction
         headers = {}
