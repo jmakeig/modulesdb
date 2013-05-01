@@ -45,7 +45,10 @@ Stop listening for changes using ```Ctl+c```.
                             password and you don't supply one at the command line
                             or in the prefrences file you will be prompted for it.
       --permission [PERMISSIONS], -perm [PERMISSIONS]
-                            The permissions that should be set on all files.
+                            Zero or more permissions that should be set on all
+                            files. Each entry should be an individaul
+                            role:capability, where capability is in {read, update,
+                            execute}, for example -perm app-user:execute.
       --ignore [IGNORE]     A gitignore-style path to ignore for observation and
                             walking.
       --config CONFIG, -K CONFIG
@@ -55,6 +58,7 @@ Stop listening for changes using ```Ctl+c```.
       --walk                Whether to recusively push all of the files to the
                             modules database before begining observation.
       --debug               Print out some extra debugging information.
+
 
 ### Dot file configuration
 Alernatively, you can specify a JSON file with configuration. By default the script looks for ```.modulesdb``` in the root directory of the tree you’re observiging or you can specify another path using the ```--config``` or ```-K``` command-line option. 
