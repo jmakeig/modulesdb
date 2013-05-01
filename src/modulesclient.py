@@ -17,6 +17,7 @@
 import urllib
 import requests
 from requests.auth import HTTPDigestAuth
+from requests.auth import HTTPBasicAuth
 
 class ModulesClient(object):
 
@@ -34,6 +35,8 @@ class ModulesClient(object):
 
         if self.auth_type == "digest":
             self.auth = HTTPDigestAuth(self.user, self.password)
+        elif self.auth_type == "basic":
+            self.auth = HTTPBasicAuth(self.user, self.password)
         else: 
             raise Exception("Unsupported auth_type " + self.auth_type)
 
