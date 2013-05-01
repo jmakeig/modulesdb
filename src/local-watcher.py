@@ -201,7 +201,7 @@ if __name__ == '__main__':
         #parser.add_argument('--cert', "-E", help="(SSL) Tells curl to use the specified client certificate file when getting a file with HTTPS, FTPS or another SSL-based protocol. The certificate must be in PEM format. If the optional password isn't specified, it will be queried for on the terminal. Note that this option assumes a \"certificate\" file that is the private key and the private certificate concatenated! See --cert and --key to specify them independently.")
         #parser.add_argument('--key', help="(SSL/SSH) Private key file name. Allows you to provide your private key in this separate file.")
         #parser.add_argument('--insecure', "-k")                
-        parser.add_argument('--permission', '-perm', dest="permissions", nargs="?", action="append", default=None, help="The permissions that should be set on all files, of the form role:capability, where capability is in {read, update, execute}.")
+        parser.add_argument('--permission', '-perm', dest="permissions", nargs="?", action="append", default=None, help="Zero or more permissions that should be set on all files. Each entry should be an individaul role:capability, where capability is in {read, update, execute}, for example -perm app-user:execute.")
         parser.add_argument('--ignore', nargs="?", action="append", default=None, help="A gitignore-style path to ignore for observation and walking.")
         
         # Command-line only
