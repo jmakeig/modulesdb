@@ -33,7 +33,9 @@ class ModulesClient(object):
         # config.get('permissions') should be a list of {"role": "privilege"} pairs.
         self.permissions = config.get('permissions')
 
-        if self.auth_type == "digest":
+        if self.auth_type == "none":
+            self.auth = None
+        elif self.auth_type == "digest":
             self.auth = HTTPDigestAuth(self.user, self.password)
         elif self.auth_type == "basic":
             self.auth = HTTPBasicAuth(self.user, self.password)
