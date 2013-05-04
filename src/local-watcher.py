@@ -92,11 +92,12 @@ def format_put_message(msg):
 class ChangeHandler(FileSystemEventHandler):
     "Handle changes to files and directories."
 
-    def __init__(self, directory, exclusions=[]):
+    def __init__(self, directory, exclusions=[], after=[]):
         "Initialize with the base directory."
         self.directory = directory
         self.exclusions = exclusions
         self.exclusions_re = r'|'.join([fnmatch.translate(x) for x in exclusions]) or r'$.'
+        self.after = after # after is a list of strings, each of which is a path to a shell script. TODO: Is that the best way?
 
     def _rel(self, path):
         "Use the stored base directory to calculate the relative path with os.path.relpath."
@@ -109,6 +110,14 @@ class ChangeHandler(FileSystemEventHandler):
         "Whether a particular path is excluded based on the list passed in at initialization."
         return bool(re.match(self.exclusions_re, self._rel(path)))
 
+    def _run_after(self, event):
+        "Loops through the list of scripts and runs each in a separate subprocess"
+        # TODO: Figure out if there are acutal requirements for I/O in and out of the script.
+        for script in self.after:
+            # TODO: Need some try/catch logic here
+            subprocess.call([script])
+
+
     # TODO: Exclusion lists (e.g. .git, .DS_Store, Thumbs.db), similar to the way .gitignore works. 
     # Call it .mlignore? Is there a Python class that already does this matching?
 
@@ -120,6 +129,7 @@ class ChangeHandler(FileSystemEventHandler):
             print format_put_message(
                 modules_client.put_file(uri=self._rel(event.src_path), file_path=event.src_path)
             )
+            self._run_after(event)
 
     def on_modified(self, event):
         # print "modified event " + self._rel(event.src_path)
@@ -129,6 +139,7 @@ class ChangeHandler(FileSystemEventHandler):
             print format_put_message(
                 modules_client.put_file(uri=self._rel(event.src_path), file_path=event.src_path)
             )
+            self._run_after(event)
 
     def on_deleted(self, event):
         # print "deleted event"
@@ -138,6 +149,7 @@ class ChangeHandler(FileSystemEventHandler):
             print format_put_message(
                 modules_client.delete(uri=self._rel(event.src_path))
             )
+            self._run_after(event)
 
     def on_moved(self, event):
         # TODO: Clean all of this logic and repeated code up
@@ -156,6 +168,7 @@ class ChangeHandler(FileSystemEventHandler):
             # put_file_contents(event.dest_path)
             modules_client.move_file(from_uri=self._rel(event.src_path), to_uri=self._rel(event.dest_path), file_path=event.dest_path)
         )
+        self._run_after(event)
 
     def on_any_event(self, event):
         # print event
@@ -163,9 +176,9 @@ class ChangeHandler(FileSystemEventHandler):
 
         
         
-def observe(directory, recursive=True, exclusions=[]):
+def observe(directory, recursive=True, exclusions=[], after=[]):
     "Observe folder and file changes. Only supports"
-    event_handler = ChangeHandler(directory, exclusions)
+    event_handler = ChangeHandler(directory, exclusions, after)
     observer = Observer()
     observer.schedule(event_handler, directory, recursive=recursive)
     observer.start()
@@ -197,6 +210,7 @@ if __name__ == '__main__':
         parser.add_argument('--walk', action="store_true", default=False, help="Whether to recusively push all of the files to the modules database before begining observation.")
         parser.add_argument("--debug", action="store_true", default=False, help="Print out some extra debugging information.")
         #parser.add_argument('--quiet', '-q', action="store_true", default=False, help="")
+        parser.add_argument('--after', '-a', action="append", default=None, help="A script to be invoked after a file is pushed to the remote modules database. This is _not_ invoked after a directory walk (--walk). This also doesn't currently support piping input in or handling output or errors.")
 
         parser.add_argument("dir", nargs='?', help="The directory to watch. Defaults to the current working directory.", default=working_dir)
 
@@ -246,8 +260,12 @@ if __name__ == '__main__':
         else:
             prefs['permissions'] = dict(('perm:' + k,v) for k,v in prefs['permissions'].iteritems())
 
+        if "after" not in prefs:
+            # UGLY: Reset proper default of after if it hasn't been set in the dot file or the command line
+            prefs['after'] = []
+
         if prefs['debug']:
-            print prefs['permissions']
+            print prefs
 
         return prefs
 
@@ -263,4 +281,4 @@ if __name__ == '__main__':
         walk(BASEDIR, config['ignore'])
 
     print "Observing " + BASEDIR + "…"
-    observe(BASEDIR, recursive=True, exclusions=config['ignore'])
+    observe(BASEDIR, recursive=True, exclusions=config['ignore'], after=config.get('after'))
