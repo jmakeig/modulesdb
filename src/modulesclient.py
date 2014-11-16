@@ -27,6 +27,7 @@ class ModulesClient(object):
         self.auth_type = config.get('auth')
         self.user = config.get('user')
         self.password = config.get('password')
+        self.database = config.get('database')
         cert = None
         cert_password = None
         self.root = config.get('root')
@@ -48,15 +49,15 @@ class ModulesClient(object):
         "Set the default error format as JSON for easier conversion into Python data structures."
         # http://localhost:8003/v1/config/properties/error-format?format=json
         # {"error-format": "json"}
-        r = requests.put(
-            self.url + "/v1/config/properties/error-format", 
-            params={"format": "json"}, 
-            headers={}, 
-            auth=self.auth,
-            data='{"error-format": "json"}'
-        )
-        if r.status_code > 299 or r.status_code < 200:
-            raise Exception(r.status_code, r.text)
+        # r = requests.put(
+        #     self.url + "/v1/config/properties/error-format", 
+        #     params={"format": "json"}, 
+        #     headers={}, 
+        #     auth=self.auth,
+        #     data='{"error-format": "json"}'
+        # )
+        # if r.status_code > 299 or r.status_code < 200:
+        #     raise Exception(r.status_code, r.text)
 
     def put(self, uri, body, transaction=None):
         "Send a file to the remote modules database. URIs are prepended with the root."
@@ -64,6 +65,8 @@ class ModulesClient(object):
         params.update(self.permissions)
         if transaction is not None:
             params['txid'] = transaction
+        if self.database is not None:
+            params['database'] = self.database
         headers = {}
         r = requests.put(
             self.url + "/v1/documents", 
@@ -88,6 +91,8 @@ class ModulesClient(object):
         params = {"uri": self.root + uri}
         if transaction is not None:
             params['txid'] = transaction
+        if self.database is not None:
+            params['database'] = self.database
         headers = {}
         r = requests.delete(
             self.url + "/v1/documents", 
@@ -113,10 +118,14 @@ class ModulesClient(object):
 
     def _create_transaction(self):
         "Create a transaction and return its id"
+        params = {}
+        if self.database is not None:
+            params['database'] = self.database
         r = requests.post(
             self.url + "/v1/transactions",
             auth=self.auth,
-            allow_redirects=False
+            allow_redirects=False,
+            params=params
         )
         if r.status_code != 303:
             raise Exception(r.status_code)
@@ -125,6 +134,8 @@ class ModulesClient(object):
     def _commit_transaction(self, transaction):
         "Commit a transaction"
         params = {"result": "commit"}
+        if self.database is not None:
+            params['database'] = self.database
         r =  requests.post(
             self.url + "/v1/transactions/" + transaction,
             params=params,
