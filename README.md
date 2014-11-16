@@ -22,8 +22,9 @@ Stop listening for changes using ```Ctl+c```.
 
     usage: local-watcher.py [-h] [--url URL] [--auth {none,digest,basic,cert}]
                             [--user USER] [--password PASSWORD]
-                            [--permission [PERMISSIONS]] [--ignore [IGNORE]]
-                            [--config CONFIG] [--walk] [--debug]
+                            [--database DATABASE] [--permission [PERMISSIONS]]
+                            [--ignore [IGNORE]] [--config CONFIG] [--walk]
+                            [--debug] [--after AFTER]
                             [dir]
 
     positional arguments:
@@ -44,6 +45,8 @@ Stop listening for changes using ```Ctl+c```.
                             service. If the authentication method requires a
                             password and you don't supply one at the command line
                             or in the prefrences file you will be prompted for it.
+      --database DATABASE, -d DATABASE
+                            The name of the database to write to
       --permission [PERMISSIONS], -perm [PERMISSIONS]
                             Zero or more permissions that should be set on all
                             files. Each entry should be an individaul
@@ -58,6 +61,11 @@ Stop listening for changes using ```Ctl+c```.
       --walk                Whether to recusively push all of the files to the
                             modules database before begining observation.
       --debug               Print out some extra debugging information.
+      --after AFTER, -a AFTER
+                            A script to be invoked after a file is pushed to the
+                            remote modules database. This is _not_ invoked after a
+                            directory walk (--walk). This also doesn't currently
+                            support piping input in or handling output or errors.
 
 
 ### Dot file configuration

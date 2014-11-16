@@ -199,6 +199,7 @@ if __name__ == '__main__':
         parser.add_argument('--auth', default=None, choices=["none", "digest", "basic", "cert"], help="The HTTP authentication method to use.") # None here means that it can be pruned such taht the overlay on the dot file just works
         parser.add_argument('--user', '-u', default=None, help="The username to use to authenticate against the REST service.")
         parser.add_argument('--password', '-p', default=None, help="The password to use to authenticate against the REST service. If the authentication method requires a password and you don't supply one at the command line or in the prefrences file you will be prompted for it.")
+        parser.add_argument('--database', '-d', default=None, help="The name of the database to write to")
         #parser.add_argument('--cert', "-E", help="(SSL) Tells curl to use the specified client certificate file when getting a file with HTTPS, FTPS or another SSL-based protocol. The certificate must be in PEM format. If the optional password isn't specified, it will be queried for on the terminal. Note that this option assumes a \"certificate\" file that is the private key and the private certificate concatenated! See --cert and --key to specify them independently.")
         #parser.add_argument('--key', help="(SSL/SSH) Private key file name. Allows you to provide your private key in this separate file.")
         #parser.add_argument('--insecure', "-k")                
